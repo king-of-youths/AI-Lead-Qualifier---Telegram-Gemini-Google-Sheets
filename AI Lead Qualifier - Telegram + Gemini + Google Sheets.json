@@ -1,0 +1,1542 @@
+{
+  "name": "AI Lead Qualifier - Telegram + Gemini + Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "d4d8708a-b44f-4957-9b5c-4b728e6c03c8",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -4880,
+        1024
+      ],
+      "webhookId": "8be42964-9a32-45f9-9cc4-16f7a6e2465a",
+      "credentials": {
+        "telegramApi": {
+          "id": "rGGLY4Jslp2W6j1z",
+          "name": "One_Lead_Qualifier_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2656ac28-2cbd-4f58-8921-0c6c15be19a2",
+              "leftValue": "={{ $('Extract Telegram Data').first().json.has_text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a0facbbb-544f-423c-a02a-a9f24072ee37",
+      "name": "Has Text?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4432,
+        1024
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract Telegram Data').first().json.chat_id }}",
+        "text": "Sorry, I can only read text messages right now. Please type your project details.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "047b7796-9ffc-4e63-8ad9-cf47c4641e34",
+      "name": "Send Non-Text Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -4192,
+        1168
+      ],
+      "webhookId": "cb5a330f-a229-425f-8586-1d8d11b87b2f",
+      "credentials": {
+        "telegramApi": {
+          "id": "rGGLY4Jslp2W6j1z",
+          "name": "One_Lead_Qualifier_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg",
+          "mode": "list",
+          "cachedResultName": " AI Lead Qualifier",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1071239144,
+          "mode": "list",
+          "cachedResultName": "Sessions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg/edit#gid=1071239144"
+        },
+        "options": {}
+      },
+      "id": "8f5e9ddc-c36b-40a2-8824-032efbe2948e",
+      "name": "Find Session",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -4224,
+        928
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "awlAoKTkEiwZxRJA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const SYSTEM_PROMPT = \"You are a data-extraction engine inside a lead qualification system. You are NOT a chatbot. You never talk to the customer.\\n\\nYOUR ONLY JOB\\nRead the customer's newest message together with the existing session data, then return ONE updated JSON object with exactly these seven keys:\\ncustomer_name, phone_number, business_type, service_needed, budget, timeline, urgency\\n\\nOUTPUT RULES\\n1. Return valid JSON only. No explanations, no markdown, no code fences, no extra keys.\\n2. Every key must be present. Use null for any value that is not known.\\n3. Never ask follow-up questions. The workflow decides what to ask next.\\n\\nEXTRACTION RULES\\n4. Extract only information explicitly stated or clearly implied by the customer. NEVER invent or guess any value.\\n5. Preserve everything already present in the existing session data. Only change a field if the newest message clearly provides a new or corrected value for it.\\n6. If the workflow tells you which field it just asked for, a short reply (for example \\\"Amaka\\\", \\\"08012345678\\\", \\\"500k\\\", \\\"3 weeks\\\" or \\\"high\\\") is most likely the answer to that field. Still extract any other field the message clearly supports.\\n7. Do not mistake unrelated numbers for a budget, timeline or phone number (quantities, years, ages, \\\"5 products\\\", \\\"10 pages\\\").\\n8. Be tolerant of spelling mistakes, slang and natural customer language.\\n\\nFIELD FORMATS\\n- customer_name: the customer's own personal name (first name or full name), with a capital first letter. Example: \\\"Amaka\\\", \\\"Chidi Okafor\\\". It is NOT the business name. Greetings like \\\"Hi\\\" or \\\"Hello\\\" are never a name. If the message only says what the business is, leave it null.\\n- phone_number: the customer's phone number exactly as given, digits with an optional leading +. Example: \\\"08012345678\\\", \\\"+2348012345678\\\". Remove spaces and dashes. If the number looks incomplete (fewer than 7 digits), return null.\\n- business_type: short natural label, capitalised first letter. Example: \\\"Fashion brand\\\", \\\"Restaurant\\\", \\\"Real estate company\\\".\\n- service_needed: short natural label. Example: \\\"Website\\\", \\\"Ecommerce website\\\", \\\"AI automation\\\", \\\"Digital marketing\\\", \\\"Mobile app\\\", \\\"Data analysis\\\".\\n- budget: keep the customer's meaning and currency. Normalise Nigerian Naira shorthand: \\\"500k\\\" or \\\"N500k\\\" or \\\"₦500k\\\" becomes \\\"₦500,000\\\"; \\\"1m\\\" or \\\"1 million\\\" becomes \\\"₦1,000,000\\\"; \\\"around 300k\\\" becomes \\\"Around ₦300,000\\\". Treat bare \\\"k\\\" or \\\"m\\\" amounts as Naira unless another currency (like $) is stated. Keep other currencies such as \\\"$2,000\\\" as written. If the customer gives a range, keep the range.\\n- timeline: keep the customer's wording, tidied. Example: \\\"3 weeks\\\", \\\"1 month\\\", \\\"By December\\\", \\\"ASAP\\\", \\\"Next quarter\\\".\\n- urgency: must be exactly \\\"Low\\\", \\\"Medium\\\", \\\"High\\\" or null.\\n  \\\"no rush\\\", \\\"not urgent\\\", \\\"whenever\\\" -> Low\\n  \\\"fairly soon\\\", \\\"this month\\\", \\\"soonish\\\" -> Medium\\n  \\\"ASAP\\\", \\\"very urgent\\\", \\\"urgently\\\", \\\"immediately\\\", \\\"I need it now\\\" -> High\\n  Only set urgency if the customer expresses it. Do NOT derive urgency from the timeline alone.\\n\\nEXAMPLES\\nExisting: all seven keys null\\nMessage: \\\"Hi, I'm Amaka, 08012345678. I own a fashion brand and need an ecommerce website. My budget is ₦500k and I want it done in 3 weeks. It's very urgent.\\\"\\nOutput: {\\\"customer_name\\\":\\\"Amaka\\\",\\\"phone_number\\\":\\\"08012345678\\\",\\\"business_type\\\":\\\"Fashion brand\\\",\\\"service_needed\\\":\\\"Ecommerce website\\\",\\\"budget\\\":\\\"₦500,000\\\",\\\"timeline\\\":\\\"3 weeks\\\",\\\"urgency\\\":\\\"High\\\"}\\n\\nExisting: {\\\"customer_name\\\":\\\"Amaka\\\",\\\"phone_number\\\":null,\\\"business_type\\\":null,\\\"service_needed\\\":null,\\\"budget\\\":null,\\\"timeline\\\":null,\\\"urgency\\\":null}\\nThe workflow just asked for: phone_number\\nMessage: \\\"0801 234 5678\\\"\\nOutput: {\\\"customer_name\\\":\\\"Amaka\\\",\\\"phone_number\\\":\\\"08012345678\\\",\\\"business_type\\\":null,\\\"service_needed\\\":null,\\\"budget\\\":null,\\\"timeline\\\":null,\\\"urgency\\\":null}\\n\\nExisting: all seven keys null\\nThe workflow just asked for: customer_name and phone_number\\nMessage: \\\"Amaka 0801 234 5678\\\"\\nOutput: {\\\"customer_name\\\":\\\"Amaka\\\",\\\"phone_number\\\":\\\"08012345678\\\",\\\"business_type\\\":null,\\\"service_needed\\\":null,\\\"budget\\\":null,\\\"timeline\\\":null,\\\"urgency\\\":null}\\n\\nExisting: all seven keys null\\nMessage: \\\"Hi, I need a website for my business.\\\"\\nOutput: {\\\"customer_name\\\":null,\\\"phone_number\\\":null,\\\"business_type\\\":null,\\\"service_needed\\\":\\\"Website\\\",\\\"budget\\\":null,\\\"timeline\\\":null,\\\"urgency\\\":null}\\n\\nReturn the JSON object now.\";\n\nconst tg = $('Extract Telegram Data').first().json;\n\n// Rows returned by \"Find Session\" (may be one row, or one empty item if none was found)\nconst rows = $input.all()\n  .map(i => i.json)\n  .filter(r => r['Telegram User ID'] && String(r['Telegram User ID']).trim() === tg.telegram_user_id);\n// If duplicates ever exist, use the most recent one.\nconst row = rows.length ? rows[rows.length - 1] : null;\n\n// Did a customer whose lead is already completed just say thank you?\nconst msgLower = (tg.message_text || '').trim().toLowerCase();\nconst looksLikeThanks = msgLower.length <= 60 &&\n  /\\b(thanks|thank you|thank u|thankyou|thx|tnx|much appreciated|appreciate it)\\b/.test(msgLower);\nconst thanksAfterComplete = !!(row && String(row['State']).trim() === 'completed' && looksLikeThanks);\n\nconst clean = (v) => (v === undefined || v === null || String(v).trim() === '') ? null : String(v).trim();\n\nlet session = {\n  customer_name: null, phone_number: null, business_type: null,\n  service_needed: null, budget: null, timeline: null, urgency: null\n};\nlet state = 'new';\nlet originalMessage = '';\n\n// \"/start\" always begins a fresh conversation. A \"completed\" session is also treated as finished.\nconst isRestart = (tg.message_text || '').trim().toLowerCase() === '/start';\nif (row && !isRestart && String(row['State']).trim() !== 'completed') {\n  session = {\n    customer_name: clean(row['Customer Name']),\n    phone_number: clean(row['Phone Number']),\n    business_type: clean(row['Business Type']),\n    service_needed: clean(row['Service Needed']),\n    budget: clean(row['Budget']),\n    timeline: clean(row['Timeline']),\n    urgency: clean(row['Urgency'])\n  };\n  state = clean(row['State']) || 'new';\n  originalMessage = clean(row['Original Message']) || '';\n}\n\n// Which field did the bot last ask about? (helps the AI read short answers)\nconst askedMap = {\n  waiting_for_contact: 'customer_name and phone_number',\n  waiting_for_name: 'customer_name',\n  waiting_for_phone: 'phone_number',\n  waiting_for_business_type: 'business_type',\n  waiting_for_service: 'service_needed',\n  waiting_for_budget: 'budget',\n  waiting_for_timeline: 'timeline',\n  waiting_for_urgency: 'urgency'\n};\nconst askedField = askedMap[state] || null;\n\nconst userPrompt =\n  'Existing session data:\\n' + JSON.stringify(session, null, 2) + '\\n\\n' +\n  (askedField\n    ? 'The workflow just asked the customer for: ' + askedField + '\\n\\n'\n    : 'This is the start of a conversation. No question has been asked yet.\\n\\n') +\n  'Customer\\'s newest message (between the markers):\\n<<<START>>>\\n' + tg.message_text + '\\n<<<END>>>\\n\\n' +\n  'Return the updated JSON object.';\n\nreturn [{\n  json: {\n    session,\n    state,\n    original_message: originalMessage,\n    session_exists: !!row,\n    thanks_after_complete: thanksAfterComplete,\n    system_prompt: SYSTEM_PROMPT,\n    user_prompt: userPrompt\n  }\n}];"
+      },
+      "id": "9b894a6a-8f92-48b6-bd2e-74a7c01f6a40",
+      "name": "Prepare Session And Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4000,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ systemInstruction: { parts: [{ text: $json.system_prompt }] }, contents: [{ role: 'user', parts: [{ text: $json.user_prompt }] }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "1264b0cb-e0ba-479e-91b4-122d17ce0ad8",
+      "name": "Gemini Extraction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3776,
+        928
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1500,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "S6JzxLWuyknkOi4F",
+          "name": "Gemini API Key"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turn Gemini's reply into a clean, validated object.\nlet raw = $input.first().json?.candidates?.[0]?.content?.parts?.[0]?.text;\n \nconst fail = (reason) => [{ json: { parse_ok: false, error_reason: reason, raw_response: raw ?? null } }];\n \nif (typeof raw !== 'string' || !raw.trim()) return fail('Empty or blocked response from Gemini');\n \nraw = raw.replace(/```json|```/gi, '').trim();\n \nlet data;\ntry { data = JSON.parse(raw); }\ncatch (e) { return fail('Invalid JSON: ' + e.message); }\n \nif (typeof data !== 'object' || data === null || Array.isArray(data)) return fail('JSON is not an object');\n \nconst clean = (v) => {\n  if (v === null || v === undefined) return null;\n  const s = String(v).trim();\n  if (!s) return null;\n  if (['null', 'n/a', 'none', 'unknown', 'not provided', 'undefined'].includes(s.toLowerCase())) return null;\n  return s;\n};\n \n// Urgency must be exactly Low / Medium / High, otherwise null.\nlet urgency = clean(data.urgency);\nif (urgency) {\n  const u = urgency.toLowerCase();\n  urgency = u === 'low' ? 'Low' : u === 'medium' ? 'Medium' : u === 'high' ? 'High' : null;\n}\n \n// Phone: keep digits and a leading +, and require a plausible length (7-15 digits).\nlet phone = clean(data.phone_number);\nif (phone) {\n  const digits = phone.replace(/\\D/g, '');\n  phone = (digits.length >= 7 && digits.length <= 15)\n    ? (phone.trim().startsWith('+') ? '+' : '') + digits\n    : null;\n}\n \n// Name: keep it reasonably short.\nlet name = clean(data.customer_name);\nif (name && name.length > 80) name = name.slice(0, 80);\n \nreturn [{\n  json: {\n    parse_ok: true,\n    extracted: {\n      customer_name: name,\n      phone_number: phone,\n      business_type: clean(data.business_type),\n      service_needed: clean(data.service_needed),\n      budget: clean(data.budget),\n      timeline: clean(data.timeline),\n      urgency\n    }\n  }\n}];"
+      },
+      "id": "83a0f9cb-ff86-4733-bb64-7c87ef011df1",
+      "name": "Parse And Validate JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3552,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "37b3bf72-9bd0-4789-a8f5-7574d6938961",
+              "leftValue": "={{ $json.parse_ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "793a87dc-33db-4011-8a76-290bdc4bc227",
+      "name": "JSON Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3344,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract Telegram Data').first().json.chat_id }}",
+        "text": "Sorry, I had trouble understanding that. Could you please rephrase or send your answer again?",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "48bae210-c9a9-43c4-89cf-d4f9786b125f",
+      "name": "Send AI Error Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -3344,
+        1120
+      ],
+      "webhookId": "78bebb7a-dc7c-412d-9690-20aa475e3856",
+      "credentials": {
+        "telegramApi": {
+          "id": "rGGLY4Jslp2W6j1z",
+          "name": "One_Lead_Qualifier_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge AI output with the saved session, find the first missing field, decide the next step.\n \n// ---- Settings you can change ----\nconst ASK_TOGETHER = false; // false = ask name and phone as two separate questions; true = ask both in one message\n// The order the bot asks questions in.\nconst order = ['customer_name', 'phone_number', 'business_type', 'service_needed', 'budget', 'timeline', 'urgency'];\n// ---------------------------------\n \nconst tg = $('Extract Telegram Data').first().json;\nconst prep = $('Prepare Session And Prompt').first().json;\nconst ext = $input.first().json.extracted;\n \n// New value wins if the AI found one; otherwise keep what we already had.\nconst merged = {};\nfor (const f of order) merged[f] = ext[f] ?? prep.session[f] ?? null;\n \nconst questions = {\n  customer_name: 'What is your name? 😊',\n  phone_number: 'What is your phone number? 📱',\n  business_type: 'What type of business do you run? 🏢',\n  service_needed: 'What service are you looking for? 🛠️',\n  budget: 'What is your estimated budget for the project? 💰',\n  timeline: 'When would you like the project completed? 📅',\n  urgency: 'How urgent is this project? ⏰ You can choose Low, Medium, or High.'\n};\nconst stateFor = {\n  customer_name: 'waiting_for_name',\n  phone_number: 'waiting_for_phone',\n  business_type: 'waiting_for_business_type',\n  service_needed: 'waiting_for_service',\n  budget: 'waiting_for_budget',\n  timeline: 'waiting_for_timeline',\n  urgency: 'waiting_for_urgency'\n};\n \nconst missing = order.filter(f => !merged[f]);\nconst hasUserId = !!tg.telegram_user_id;\nconst isComplete = missing.length === 0 && hasUserId;\n \nlet state, replyText;\nlet nextField = null; // which question comes next (used by the \"Which Question?\" switch)\n \nif (isComplete) {\n  state = 'completed';\n  replyText = \"Thanks! ✅ I've received your project details. Our team will review your request and get back to you soon. 🙌\";\n} else {\n  nextField = missing[0] || null;\n \n  // Work out which question we are about to ask.\n  const bothContactMissing = missing.includes('customer_name') && missing.includes('phone_number');\n  let question;\n  if (bothContactMissing && ASK_TOGETHER) {\n    state = 'waiting_for_contact';\n    question = 'What is your name and phone number? 😊📱';\n  } else {\n    state = stateFor[nextField];\n    question = questions[nextField];\n  }\n \n  // Use the customer's first name when we know it: \"Thanks Amaka! ...\"\n  const firstName = merged.customer_name ? String(merged.customer_name).trim().split(/\\s+/)[0] : '';\n  const thanks = firstName ? 'Thanks ' + firstName + '! ' : 'Thanks! ';\n \n  const isGreeting = /^\\s*(hi|hello|hey|hola|good\\s+(morning|afternoon|evening))\\W*$/i.test(tg.message_text || '');\n \n  let intro;\n  if (prep.state === 'new' && !firstName) intro = 'Welcome to Lead Qualifier! 👋 ';      // very first message\n  else if (prep.state === state && isGreeting) intro = 'Welcome back! 👋 ';               // customer returns mid-conversation\n  else if (prep.state === state) intro = \"Sorry, I didn't catch that. 😅 \";               // same question again\n  else intro = thanks;                                                                  // normal follow-up\n \n  replyText = intro + question;\n}\n \n// Keep the first real message (not a /start command) as the original message.\nconst firstReal = tg.message_text && !tg.message_text.startsWith('/') ? tg.message_text : '';\n \nreturn [{\n  json: {\n    telegram_user_id: tg.telegram_user_id,\n    telegram_username: tg.telegram_username,\n    chat_id: tg.chat_id,\n    ...merged,\n    original_message: prep.original_message || firstReal,\n    missing_fields: missing,\n    next_field: nextField,\n    is_complete: isComplete,\n    state,\n    reply_text: replyText,\n    updated_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "603016d7-410a-4d67-8642-8e9771d7d05b",
+      "name": "Merge And Check Fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3120,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4e291ead-918d-4437-adc2-90cd8d88908e",
+              "leftValue": "={{ $json.is_complete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f8023688-6fba-4562-b9df-82854264ed3b",
+      "name": "Lead Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2896,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg",
+          "mode": "list",
+          "cachedResultName": " AI Lead Qualifier",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1071239144,
+          "mode": "list",
+          "cachedResultName": "Sessions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg/edit#gid=1071239144"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "State": "={{ $json.state }}",
+            "Business Type": "={{ $json.business_type ?? '' }}",
+            "Service Needed": "={{ $json.service_needed ?? '' }}",
+            "Budget": "={{ $json.budget ?? '' }}",
+            "Timeline": "={{ $json.timeline ?? '' }}",
+            "Urgency": "={{ $json.urgency ?? '' }}",
+            "Updated At": "={{ $now.toISO() }}",
+            "Original Message": "={{ $json.original_message }}",
+            "Telegram User ID": "={{ $json.telegram_user_id }}",
+            "Customer Name": "={{ $json.customer_name ?? '' }}",
+            "Phone Number": "={{ $json.phone_number ?? '' }}"
+          },
+          "matchingColumns": [
+            "Telegram User ID"
+          ],
+          "schema": [
+            {
+              "id": "Telegram User ID",
+              "displayName": "Telegram User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "State",
+              "displayName": "State",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Business Type",
+              "displayName": "Business Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Service Needed",
+              "displayName": "Service Needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Urgency",
+              "displayName": "Urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Updated At",
+              "displayName": "Updated At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Original Message",
+              "displayName": "Original Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "a854bc9c-fcd9-4dfd-bcf0-81f9aa5c039b",
+      "name": "Save Session",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2672,
+        928
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "awlAoKTkEiwZxRJA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Merge And Check Fields').first().json.chat_id }}",
+        "text": "={{ $('Merge And Check Fields').first().json.reply_text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "96ea4763-26bf-44c9-8cca-d192404ec3aa",
+      "name": "Send Follow-Up Question",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2112,
+        1632
+      ],
+      "webhookId": "15b176ec-c632-4373-a944-eb1af6930b83",
+      "credentials": {
+        "telegramApi": {
+          "id": "rGGLY4Jslp2W6j1z",
+          "name": "One_Lead_Qualifier_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg",
+          "mode": "list",
+          "cachedResultName": " AI Lead Qualifier",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "cc645b3f-5cc2-44d9-8ccb-8ec34d8a2471",
+      "name": "Get Leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2672,
+        624
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "awlAoKTkEiwZxRJA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Look at existing Lead IDs (L-001, L-002 ...) and create the next one.\nconst merged = $('Merge And Check Fields').first().json;\n\nlet max = 0;\nfor (const item of $input.all()) {\n  const id = String(item.json['Lead ID'] || '');\n  const m = id.match(/^L-(\\d+)$/);\n  if (m) max = Math.max(max, parseInt(m[1], 10));\n}\n\nreturn [{\n  json: {\n    ...merged,\n    lead_id: 'L-' + String(max + 1).padStart(3, '0'),\n    created_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "79734276-d78a-48ca-860f-fca0d3761bce",
+      "name": "Generate Lead ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2464,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg",
+          "mode": "list",
+          "cachedResultName": " AI Lead Qualifier",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Lead ID": "={{ $json.lead_id }}",
+            "Business Type": "={{ $json.business_type }}",
+            "Service Needed": "={{ $json.service_needed }}",
+            "Budget": "={{ $json.budget }}",
+            "Timeline": "={{ $json.timeline }}",
+            "Urgency": "={{ $json.urgency }}",
+            "Original Message": "={{ $json.original_message }}",
+            "Created At": "={{ $json.created_at }}",
+            "Customer Name": "{{ $json.customer_name }}",
+            "Phone Number": "={{ $json.phone_number }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Business Type",
+              "displayName": "Business Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Service Needed",
+              "displayName": "Service Needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Urgency",
+              "displayName": "Urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Telegram User ID",
+              "displayName": "Telegram User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Telegram Username",
+              "displayName": "Telegram Username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Original Message",
+              "displayName": "Original Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Created At",
+              "displayName": "Created At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "417c1aec-b319-462b-957f-2b3c075a81ef",
+      "name": "Append Lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2240,
+        624
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "awlAoKTkEiwZxRJA",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg",
+          "mode": "list",
+          "cachedResultName": " AI Lead Qualifier",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1071239144,
+          "mode": "list",
+          "cachedResultName": "Sessions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZrgRc0iTwJs-qCIu4tM8KOanVGG67iEIzDO7AOlDPNg/edit#gid=1071239144"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Telegram User ID": "={{ $('Generate Lead ID').first().json.telegram_user_id }}",
+            "State": "completed",
+            "Updated At": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "Telegram User ID"
+          ],
+          "schema": [
+            {
+              "id": "Telegram User ID",
+              "displayName": "Telegram User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "State",
+              "displayName": "State",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Business Type",
+              "displayName": "Business Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Service Needed",
+              "displayName": "Service Needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Urgency",
+              "displayName": "Urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Updated At",
+              "displayName": "Updated At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Original Message",
+              "displayName": "Original Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "06a7a005-431e-4a5c-a8f2-912ddcd631b2",
+      "name": "Mark Session Completed",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2016,
+        560
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "awlAoKTkEiwZxRJA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Generate Lead ID').first().json.chat_id }}",
+        "text": "Sorry, something went wrong while saving your details. Please send your last message again in a moment.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "9b66ed2b-a649-44ec-b322-109fdadca424",
+      "name": "Send Save Error Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2016,
+        768
+      ],
+      "webhookId": "cf926dc7-39e2-4ed5-9bf0-1167fd42805a",
+      "credentials": {
+        "telegramApi": {
+          "id": "rGGLY4Jslp2W6j1z",
+          "name": "One_Lead_Qualifier_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Generate Lead ID').first().json.chat_id }}",
+        "text": "={{ $('Generate Lead ID').first().json.reply_text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "3575e12d-2efc-4ec3-8778-21db14ab1738",
+      "name": "Send Confirmation1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1792,
+        560
+      ],
+      "webhookId": "5c3f74c0-5683-4b8e-a930-9d863ea81dee",
+      "credentials": {
+        "telegramApi": {
+          "id": "rGGLY4Jslp2W6j1z",
+          "name": "One_Lead_Qualifier_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "af6d9a60-2fb1-4320-9482-ba385777ff91",
+              "leftValue": "={{ $json.is_button }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "36837257-2ab3-4c36-bf34-e148966e1457",
+      "name": "Is Button Press?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4656,
+        1360
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $('Extract Telegram Data').first().json.callback_query_id }}",
+        "additionalFields": {}
+      },
+      "id": "9ee88dbe-612b-4f7a-9329-358b1edd2ddf",
+      "name": "Answer Button Press",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -4304,
+        1440
+      ],
+      "webhookId": "b5428561-0c91-468a-b5aa-21248f018cd1",
+      "credentials": {
+        "telegramApi": {
+          "id": "rGGLY4Jslp2W6j1z",
+          "name": "One_Lead_Qualifier_bot"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b8c990e6-9337-44bd-b05a-4727215b47a9",
+                    "leftValue": "={{ $('Merge And Check Fields').first().json.next_field }}",
+                    "rightValue": "service_needed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Service"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8ded101e-e12c-488f-8e25-f603e22633fc",
+                    "leftValue": "={{ $('Merge And Check Fields').first().json.next_field }}",
+                    "rightValue": "urgency",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Urgency"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Text question"
+        }
+      },
+      "id": "ca895147-3010-46f5-abab-c683bcc75787",
+      "name": "Which Question?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2480,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Merge And Check Fields').first().json.chat_id }}",
+        "text": "={{ $('Merge And Check Fields').first().json.reply_text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Website",
+                    "additionalFields": {
+                      "callback_data": "Website"
+                    }
+                  },
+                  {
+                    "text": "Ecommerce website",
+                    "additionalFields": {
+                      "callback_data": "Ecommerce website"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "AI automation",
+                    "additionalFields": {
+                      "callback_data": "AI automation"
+                    }
+                  },
+                  {
+                    "text": "Digital marketing",
+                    "additionalFields": {
+                      "callback_data": "Digital marketing"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Mobile app",
+                    "additionalFields": {
+                      "callback_data": "Mobile app"
+                    }
+                  },
+                  {
+                    "text": "Data analysis",
+                    "additionalFields": {
+                      "callback_data": "Data analysis"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "3ce4b6d3-bbc2-4042-9d2b-d5ed443155bf",
+      "name": "Ask Service Buttons",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2112,
+        1280
+      ],
+      "webhookId": "e8f22318-4d63-4212-ab36-737e993178a5",
+      "credentials": {
+        "telegramApi": {
+          "id": "rGGLY4Jslp2W6j1z",
+          "name": "One_Lead_Qualifier_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Merge And Check Fields').first().json.chat_id }}",
+        "text": "={{ $('Merge And Check Fields').first().json.reply_text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Low",
+                    "additionalFields": {
+                      "callback_data": "Low"
+                    }
+                  },
+                  {
+                    "text": "Medium",
+                    "additionalFields": {
+                      "callback_data": "Medium"
+                    }
+                  },
+                  {
+                    "text": "High",
+                    "additionalFields": {
+                      "callback_data": "High"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "b6cf2197-3dd8-4561-beca-231b664803bb",
+      "name": "Ask Urgency Buttons",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2112,
+        1440
+      ],
+      "webhookId": "b5d585f3-7bf9-44ae-b94b-4367db0553e4",
+      "credentials": {
+        "telegramApi": {
+          "id": "rGGLY4Jslp2W6j1z",
+          "name": "One_Lead_Qualifier_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handles BOTH typed messages and button presses (callback_query).\nconst upd = $input.first().json;\nconst cb = upd.callback_query;\n\nif (cb) {\n  const from = cb.from || {};\n  const data = String(cb.data || '').trim();\n  return [{\n    json: {\n      telegram_user_id: from.id !== undefined ? String(from.id) : '',\n      telegram_username: from.username ? '@' + from.username : '',\n      chat_id: (cb.message && cb.message.chat && cb.message.chat.id !== undefined) ? cb.message.chat.id : (from.id ?? null),\n      message_text: data,\n      callback_query_id: cb.id || '',\n      is_button: true,\n      has_text: data.length > 0 && from.id !== undefined\n    }\n  }];\n}\n\nconst msg = upd.message || {};\nconst from = msg.from || {};\nconst text = typeof msg.text === 'string' ? msg.text.trim() : '';\n\nreturn [{\n  json: {\n    telegram_user_id: from.id !== undefined ? String(from.id) : '',\n    telegram_username: from.username ? '@' + from.username : '',\n    chat_id: (msg.chat && msg.chat.id !== undefined) ? msg.chat.id : (from.id ?? null),\n    message_text: text,\n    callback_query_id: '',\n    is_button: false,\n    has_text: text.length > 0 && from.id !== undefined\n  }\n}];"
+      },
+      "id": "baea2dea-a2f6-4fe8-9eda-bc1b22cb08e6",
+      "name": "Extract Telegram Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4672,
+        1024
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "905f27ba-5519-409e-ba41-20fad623f649",
+              "leftValue": "={{ $json.thanks_after_complete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "904ff5da-701b-4e22-803e-1119b9e45f20",
+      "name": "Is Thank You?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3936,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract Telegram Data').first().json.chat_id }}",
+        "text": "You're welcome! 😊 Our team will review your request and get back to you very soon. 🙌",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "317d54c8-2645-4beb-9436-5cd74a914157",
+      "name": "Reply To Thanks",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -3712,
+        1200
+      ],
+      "webhookId": "ae06b3c9-4700-4d94-817b-22a66f1dca45",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "telegramApi": {
+          "id": "rGGLY4Jslp2W6j1z",
+          "name": "One_Lead_Qualifier_bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Telegram Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Text?": {
+      "main": [
+        [
+          {
+            "node": "Find Session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Non-Text Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Session": {
+      "main": [
+        [
+          {
+            "node": "Prepare Session And Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Session And Prompt": {
+      "main": [
+        [
+          {
+            "node": "Is Thank You?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Extraction": {
+      "main": [
+        [
+          {
+            "node": "Parse And Validate JSON",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send AI Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse And Validate JSON": {
+      "main": [
+        [
+          {
+            "node": "JSON Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON Valid?": {
+      "main": [
+        [
+          {
+            "node": "Merge And Check Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send AI Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge And Check Fields": {
+      "main": [
+        [
+          {
+            "node": "Lead Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Complete?": {
+      "main": [
+        [
+          {
+            "node": "Get Leads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Session": {
+      "main": [
+        [
+          {
+            "node": "Which Question?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Leads": {
+      "main": [
+        [
+          {
+            "node": "Generate Lead ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Lead ID": {
+      "main": [
+        [
+          {
+            "node": "Append Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Lead": {
+      "main": [
+        [
+          {
+            "node": "Mark Session Completed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Save Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Session Completed": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Button Press?": {
+      "main": [
+        [
+          {
+            "node": "Answer Button Press",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has Text?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Which Question?": {
+      "main": [
+        [
+          {
+            "node": "Ask Service Buttons",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask Urgency Buttons",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Follow-Up Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Telegram Data": {
+      "main": [
+        [
+          {
+            "node": "Is Button Press?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Button Press": {
+      "main": [
+        [
+          {
+            "node": "Has Text?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Thank You?": {
+      "main": [
+        [
+          {
+            "node": "Reply To Thanks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gemini Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4291518b-1323-43d5-8a59-0d16d26394cf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0326e1aa341a87e49ac335fffffd8b1eb9e9bb3841e8b999f52d0d65a8a61014"
+  },
+  "nodeGroups": [],
+  "id": "SgsTfNDcgE7urhrc",
+  "tags": []
+}
